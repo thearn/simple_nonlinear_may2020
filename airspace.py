@@ -21,8 +21,8 @@ class Airspace(om.Group):
         self.add_subsystem('schedule', Schedule(num_nodes=nn, num_v=nv), promotes=['*'])
         self.add_subsystem('vehicles', Vehicles(num_nodes=nn, num_v=nv), promotes=['*'])
 
-nv = 5
-ns = 30
+nv = 3
+ns = 25
 t_duration = 200.0
 
 
@@ -32,7 +32,8 @@ traj = dm.Trajectory()
 p.model.add_subsystem('traj', subsys=traj)
 p.model.linear_solver = om.DirectSolver()
 
-gl = dm.GaussLobatto(num_segments=ns, order=3)
+#gl = dm.GaussLobatto(num_segments=ns, order=3)
+gl = dm.Radau(num_segments=ns, order=3)
 nn = gl.grid_data.num_nodes
 
 phase = dm.Phase(ode_class=Airspace,
@@ -47,9 +48,11 @@ phase.set_time_options(fix_initial=True, fix_duration=True, targets=['t'], units
 traj.add_phase(name='phase0', phase=phase)
 
 
-ds = 1e-2
+#ds = 1e-1
+ds = 1.0
 phase.add_state('X', 
-                fix_initial=True, 
+                fix_initial=True,
+                fix_final=True, 
                 shape=(nv,),
                 rate_source='X_dot', 
                 targets='X',
@@ -59,7 +62,8 @@ phase.add_state('X',
                 defect_scaler=ds)
 
 phase.add_state('Y', 
-                fix_initial=True, 
+                fix_initial=True,
+                fix_final=True, 
                 shape=(nv,),
                 rate_source='Y_dot', 
                 targets='Y',
@@ -69,7 +73,8 @@ phase.add_state('Y',
                 defect_scaler=ds)
 
 phase.add_state('Vx', 
-                fix_initial=True, 
+                fix_initial=True,
+                fix_final=False, 
                 shape=(nv,),
                 rate_source='Vx_dot', 
                 targets='Vx', 
@@ -79,7 +84,8 @@ phase.add_state('Vx',
                 defect_scaler=ds)
 
 phase.add_state('Vy', 
-                fix_initial=True, 
+                fix_initial=True,
+                fix_final=False, 
                 shape=(nv,),
                 rate_source='Vy_dot', 
                 targets='Vy', 
@@ -89,7 +95,7 @@ phase.add_state('Vy',
                 defect_scaler=ds)
 
 phase.add_state('theta', 
-                fix_initial=True, 
+                fix_initial=False, 
                 shape=(nv,),
                 rate_source='theta_dot', 
                 targets='theta', 
@@ -122,14 +128,28 @@ phase.add_input_parameter('t_end',
 
 
 p.driver = om.pyOptSparseDriver()
-p.driver.options['optimizer'] = 'IPOPT'
-p.driver.options['print_results'] = False
-p.driver.opt_settings['hessian_approximation'] = 'limited-memory'
-# p.driver.opt_settings['mu_init'] = 1.0E-2
-p.driver.opt_settings['nlp_scaling_method'] = 'gradient-based'
-p.driver.opt_settings['print_level'] = 5
-p.driver.opt_settings['linear_solver'] = 'mumps'
-p.driver.opt_settings['max_iter'] = 500
+# -------------------------
+# p.driver.options['optimizer'] = 'IPOPT'
+# p.driver.options['print_results'] = False
+# p.driver.opt_settings['hessian_approximation'] = 'limited-memory'
+# # p.driver.opt_settings['mu_init'] = 1.0E-2
+# p.driver.opt_settings['nlp_scaling_method'] = 'gradient-based'
+# p.driver.opt_settings['print_level'] = 5
+# p.driver.opt_settings['linear_solver'] = 'mumps'
+# p.driver.opt_settings['max_iter'] = 500
+
+# --------------------------
+
+p.driver.options['optimizer'] = 'SNOPT'
+
+#p.driver.opt_settings['Major iterations limit'] = 1000
+p.driver.opt_settings['iSumm'] = 6
+p.driver.opt_settings['Verify level'] = 0  # if you set this to 3 it checks partials, if you set it ot zero, ot doesn't check partials
+
+#p.driver.opt_settings['Major feasibility tolerance'] = 1.0E-5
+p.driver.opt_settings['Major optimality tolerance'] = 1.0E-5
+
+# --------------------------
 
 phase.add_objective('E', loc='final', scaler=1)
 
@@ -150,18 +170,18 @@ r = 100.0
 x_start = r * np.cos(theta)
 y_start = r * np.sin(theta)  
 
-k = 1.0
-theta2 = theta - np.pi + np.random.uniform(-np.pi/k, np.pi/k)
+k = 3.0
+theta2 = theta - np.pi + np.random.uniform(-np.pi/k, np.pi/k, nv)
 x_end = r * np.cos(theta2)
 y_end = r * np.sin(theta2)
 
 # for i in range(nv):
 #     plt.plot([x_start[i], x_end[i]], [y_start[i], y_end[i]])
 # plt.show()
-
+# quit()
 
 p.set_val('traj.phase0.states:X', phase.interpolate(ys=[x_start, x_end], nodes='state_input'))
-p.set_val('traj.phase0.states:X', phase.interpolate(ys=[y_start, y_end], nodes='state_input'))
+p.set_val('traj.phase0.states:Y', phase.interpolate(ys=[y_start, y_end], nodes='state_input'))
 
 z = np.zeros(nv)
 p.set_val('traj.phase0.states:Vx', phase.interpolate(ys=[z, z], nodes='state_input'))
@@ -170,7 +190,23 @@ p.set_val('traj.phase0.states:Vy', phase.interpolate(ys=[z, z], nodes='state_inp
 
 p.run_driver()
 
+sim_out = p#traj.simulate()
 
+t = sim_out.get_val('traj.phase0.timeseries.time')
+
+X = sim_out.get_val('traj.phase0.timeseries.states:X')
+Y = sim_out.get_val('traj.phase0.timeseries.states:Y')
+
+
+plt.figure()
+
+for i in range(nv):
+    plt.scatter(x_start, y_start)
+    plt.scatter(x_end, y_end)
+    x = X[:, i]
+    y = Y[:, i]
+    plt.plot(x, y)
+plt.show()
 
 
 
