@@ -113,21 +113,24 @@ phase.add_state('E',
                 defect_scaler=ds)
 
 
+t_start = np.random.uniform(0, 50, nv)
+t_end = np.random.uniform(150, 199, nv)
 phase.add_input_parameter('t_start', 
                               targets='t_start', 
                               dynamic=False, 
                               shape=(nv,),
                               units='min',
-                              val=np.random.uniform(0, 50, nv))
+                              val=t_start)
 
 phase.add_input_parameter('t_end', 
                               targets='t_end', 
                               dynamic=False,
                               shape=(nv,), 
                               units='min',
-                              val=np.random.uniform(150, 199, nv))
+                              val=t_end)
 
-
+print("t_start:", t_start)
+print("t_end:", t_end)
 p.driver = om.pyOptSparseDriver()
 # -------------------------
 # p.driver.options['optimizer'] = 'IPOPT'
@@ -143,7 +146,10 @@ p.driver = om.pyOptSparseDriver()
 
 p.driver.options['optimizer'] = 'SNOPT'
 
-#p.driver.opt_settings['Major iterations limit'] = 1000
+#p.driver.opt_settings["Major step limit"] = 2.0 #2.0
+p.driver.opt_settings['Major iterations limit'] = 1000000
+p.driver.opt_settings['Minor iterations limit'] = 1000000
+p.driver.opt_settings['Iterations limit'] = 1000000
 p.driver.opt_settings['iSumm'] = 6
 p.driver.opt_settings['Verify level'] = 0  # if you set this to 3 it checks partials, if you set it ot zero, ot doesn't check partials
 
@@ -162,7 +168,7 @@ p.driver.declare_coloring()
 p.setup(check=True)
 
 p.set_val('traj.phase0.t_initial', 0)
-p.set_val('traj.phase0.t_duration', t_duration)
+p.set_val('traj.phase0.t_duration', t_end.max())
 
 
 theta = np.linspace(0, 2*np.pi, nv + 1)[:nv]
@@ -198,6 +204,12 @@ t = sim_out.get_val('traj.phase0.timeseries.time')
 X = sim_out.get_val('traj.phase0.timeseries.states:X')
 Y = sim_out.get_val('traj.phase0.timeseries.states:Y')
 
+Vx = sim_out.get_val('traj.phase0.timeseries.states:Vx')
+Vy = sim_out.get_val('traj.phase0.timeseries.states:Vy')
+V = np.sqrt(Vx**2 + Vy**2)
+
+plt.figure()
+plt.plot(V)
 
 plt.figure()
 
