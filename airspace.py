@@ -7,6 +7,7 @@ from vehicles import Vehicles
 
 import matplotlib.pyplot as plt
 
+np.random.seed(4)
 
 
 class Airspace(om.Group):
@@ -74,7 +75,7 @@ phase.add_state('Y',
 
 phase.add_state('Vx', 
                 fix_initial=True,
-                fix_final=False, 
+                fix_final=True, 
                 shape=(nv,),
                 rate_source='Vx_dot', 
                 targets='Vx', 
@@ -85,7 +86,7 @@ phase.add_state('Vx',
 
 phase.add_state('Vy', 
                 fix_initial=True,
-                fix_final=False, 
+                fix_final=True, 
                 shape=(nv,),
                 rate_source='Vy_dot', 
                 targets='Vy', 
@@ -153,8 +154,8 @@ p.driver.opt_settings['Major optimality tolerance'] = 1.0E-5
 
 phase.add_objective('E', loc='final', scaler=1)
 
-phase.add_control('thrust', targets=['thrust'], shape=(nv,), lower=-10, upper=10, opt=True)
-phase.add_control('theta_dot', targets=['theta_dot'], shape=(nv,), lower=-0.4, upper=0.4, opt=True)
+phase.add_control('thrust', targets=['thrust'], shape=(nv,), lower=-20, upper=20, opt=True)
+phase.add_control('theta_dot', targets=['theta_dot'], shape=(nv,), lower=-0.2, upper=0.2, opt=True)
 
 
 p.driver.declare_coloring() 
@@ -170,7 +171,7 @@ r = 100.0
 x_start = r * np.cos(theta)
 y_start = r * np.sin(theta)  
 
-k = 3.0
+k = 12.0
 theta2 = theta - np.pi + np.random.uniform(-np.pi/k, np.pi/k, nv)
 x_end = r * np.cos(theta2)
 y_end = r * np.sin(theta2)
