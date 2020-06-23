@@ -65,10 +65,10 @@ class Vehicles(om.ExplicitComponent):
         self.declare_partials('X_dot', ['Vx', 'theta'], rows=arange1, cols=arange1)
         self.declare_partials('Y_dot', ['Vy', 'theta'], rows=arange1, cols=arange1)
         
-        self.declare_partials('Vx_dot', ['theta', 'thrust', 'c_schedule'], rows=arange1, cols=arange1)
+        self.declare_partials('Vx_dot', ['theta', 'thrust', 'c_schedule', 'Vx'], rows=arange1, cols=arange1)
         #self.declare_partials('Vx_dot', ['t'], rows=arange1, cols=arange2)
         
-        self.declare_partials('Vy_dot', ['theta', 'thrust', 'c_schedule'], rows=arange1, cols=arange1)
+        self.declare_partials('Vy_dot', ['theta', 'thrust', 'c_schedule', 'Vy'], rows=arange1, cols=arange1)
         #self.declare_partials('Vy_dot', ['t'], rows=arange1, cols=arange2)
 
         self.declare_partials('sq_thrust', 'thrust', rows=arange2, cols=arange1)
@@ -90,8 +90,9 @@ class Vehicles(om.ExplicitComponent):
         outputs['X_dot'] = cos(theta) * Vx
         outputs['Y_dot'] = sin(theta) * Vy
 
-        outputs['Vx_dot'] = cos(theta) * self.c_thrust
-        outputs['Vy_dot'] = sin(theta) * self.c_thrust
+        self.a = 0.3
+        outputs['Vx_dot'] = cos(theta) * (self.c_thrust - self.a*Vx)
+        outputs['Vy_dot'] = sin(theta) * (self.c_thrust - self.a*Vy)
 
         sq_thrust = np.sum(thrust**2, axis=1)
 
@@ -115,11 +116,15 @@ class Vehicles(om.ExplicitComponent):
         jacobian['Y_dot', 'Vy'] = (sin(theta)).flatten()
         jacobian['Y_dot', 'theta'] = (Vy*cos(theta)).flatten()
 
-        jacobian['Vx_dot', 'theta'] = (-self.c_thrust*sin(theta)).flatten()
+        jacobian['Vx_dot', 'theta'] = (-(-Vx*self.a + c_schedule*thrust)*sin(theta)).flatten()
+        jacobian['Vx_dot', 'Vx'] = (-self.a*cos(theta)).flatten()
+        #jacobian['Vx_dot', 'a'] = (-Vx*cos(theta)).flatten()
         jacobian['Vx_dot', 'thrust'] = (c_schedule*cos(theta)).flatten()
         jacobian['Vx_dot', 'c_schedule'] = (thrust*cos(theta)).flatten()
 
-        jacobian['Vy_dot', 'theta'] = (self.c_thrust*cos(theta)).flatten()
+        jacobian['Vy_dot', 'theta'] = ((-Vy*self.a + c_schedule*thrust)*cos(theta)).flatten()
+        jacobian['Vy_dot', 'Vy'] = (-self.a*sin(theta)).flatten()
+        #jacobian['Vy_dot', 'a'] = (-Vy*sin(theta)).flatten()
         jacobian['Vy_dot', 'thrust'] = (c_schedule*sin(theta)).flatten()
         jacobian['Vy_dot', 'c_schedule'] = (thrust*sin(theta)).flatten()
 
