@@ -5,7 +5,7 @@ import dymos as dm
 import matplotlib.pyplot as plt
 import time
 
-a = 3.0
+a = 13.0
 
 def vector_bool(x, a, b):
     pass

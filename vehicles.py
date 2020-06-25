@@ -62,8 +62,8 @@ class Vehicles(om.ExplicitComponent):
         for i in range(nn):
             arange2 += nr * [i]
 
-        self.declare_partials('X_dot', ['Vx', 'theta'], rows=arange1, cols=arange1)
-        self.declare_partials('Y_dot', ['Vy', 'theta'], rows=arange1, cols=arange1)
+        self.declare_partials('X_dot', ['Vx', 'theta', 'c_schedule'], rows=arange1, cols=arange1)
+        self.declare_partials('Y_dot', ['Vy', 'theta', 'c_schedule'], rows=arange1, cols=arange1)
         
         self.declare_partials('Vx_dot', ['theta', 'thrust', 'c_schedule', 'Vx'], rows=arange1, cols=arange1)
         #self.declare_partials('Vx_dot', ['t'], rows=arange1, cols=arange2)
@@ -87,8 +87,8 @@ class Vehicles(om.ExplicitComponent):
 
         self.c_thrust = (thrust*c_schedule)
 
-        outputs['X_dot'] = cos(theta) * Vx
-        outputs['Y_dot'] = sin(theta) * Vy
+        outputs['X_dot'] = cos(theta) * Vx * c_schedule
+        outputs['Y_dot'] = sin(theta) * Vy * c_schedule
 
         self.a = 0.3
         outputs['Vx_dot'] = cos(theta) * (self.c_thrust - self.a*Vx)
@@ -110,11 +110,13 @@ class Vehicles(om.ExplicitComponent):
         thrust = inputs['thrust']
         c_schedule = inputs['c_schedule']
 
-        jacobian['X_dot', 'Vx'] = (cos(theta)).flatten()
-        jacobian['X_dot', 'theta'] = (-Vx*sin(theta)).flatten()
+        jacobian['X_dot', 'Vx'] = (cos(theta) * c_schedule).flatten()
+        jacobian['X_dot', 'theta'] = (-Vx*sin(theta) * c_schedule).flatten()
+        jacobian['X_dot', 'c_schedule'] = (cos(theta) * Vx).flatten()
 
-        jacobian['Y_dot', 'Vy'] = (sin(theta)).flatten()
-        jacobian['Y_dot', 'theta'] = (Vy*cos(theta)).flatten()
+        jacobian['Y_dot', 'Vy'] = (sin(theta) * c_schedule).flatten()
+        jacobian['Y_dot', 'theta'] = (Vy*cos(theta) * c_schedule).flatten()
+        jacobian['Y_dot', 'c_schedule'] = (sin(theta) * Vy).flatten()
 
         jacobian['Vx_dot', 'theta'] = (-(-Vx*self.a + c_schedule*thrust)*sin(theta)).flatten()
         jacobian['Vx_dot', 'Vx'] = (-self.a*cos(theta)).flatten()

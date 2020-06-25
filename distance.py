@@ -39,7 +39,7 @@ class Distances(om.ExplicitComponent):
 
     def compute(self, inputs, outputs):
         nn = self.options['num_nodes']
-        nr = self.options['num_v']
+        nv = self.options['num_v']
 
         X = inputs['X']
         Y = inputs['Y']
@@ -55,9 +55,9 @@ class Distances(om.ExplicitComponent):
 
         xe, ye = [], []
 
-        self.dx = np.zeros(X.shape, dtype=np.complex)
-        self.dy = np.zeros(Y.shape, dtype=np.complex)
-        self.dc = np.zeros(c.shape, dtype=np.complex)
+        self.dx = np.zeros(X.shape)
+        self.dy = np.zeros(Y.shape)
+        self.dc = np.zeros(c.shape)
 
         for i in range(nv):
             for k in range(i + 1, nv):
@@ -89,13 +89,13 @@ class Distances(om.ExplicitComponent):
                 self.dc[:, k] += a*c1*d_min*d_close/(1 + d_close)**2
 
 
-                for j in range(nn):
-                    if y[j] >= 0.9:
-                        dd2 += 1
-                        xe.append(x1[j])
-                        ye.append(y1[j])
-                        xe.append(x2[j])
-                        ye.append(y2[j])
+                # for j in range(nn):
+                #     if y[j] >= 0.9:
+                #         dd2 += 1
+                #         xe.append(x1[j])
+                #         ye.append(y1[j])
+                #         xe.append(x2[j])
+                #         ye.append(y2[j])
 
         # print(outputs['dist'], dd2)
         # plt.figure()
@@ -119,86 +119,87 @@ class Distances(om.ExplicitComponent):
         # jacobian['dist', 'd_min'] = a*c1*c2*np.exp(-a*(c1*c2*d_min - sqrt((x1 - x2)**2 + (y1 - y2)**2)))/(1 + np.exp(-a*(c1*c2*d_min - sqrt((x1 - x2)**2 + (y1 - y2)**2))))**2
 
 
+if __name__ == '__main__':
+    
+    np.random.seed(0)
 
-np.random.seed(0)
+    nn = 30
+    nv = 25
 
-nn = 30
-nv = 25
+    p = om.Problem()
+    p.model = om.Group()
 
-p = om.Problem()
-p.model = om.Group()
+    p.model.add_subsystem('inputs_t', om.IndepVarComp('t', val=np.zeros(nn)), promotes=['*'])
+    p.model.add_subsystem('inputs_x', om.IndepVarComp('X', val=np.zeros((nn, nv))), promotes=['*'])
+    p.model.add_subsystem('inputs_y', om.IndepVarComp('Y', val=np.zeros((nn, nv))), promotes=['*'])
 
-p.model.add_subsystem('inputs_t', om.IndepVarComp('t', val=np.zeros(nn)), promotes=['*'])
-p.model.add_subsystem('inputs_x', om.IndepVarComp('X', val=np.zeros((nn, nv))), promotes=['*'])
-p.model.add_subsystem('inputs_y', om.IndepVarComp('Y', val=np.zeros((nn, nv))), promotes=['*'])
+    p.model.add_subsystem('test', Schedule(num_nodes=nn, num_v=nv), promotes=['*'])
+    p.model.add_subsystem('distance', Distances(num_nodes=nn, num_v=nv), promotes=['*'])
+    p.setup()
 
-p.model.add_subsystem('test', Schedule(num_nodes=nn, num_v=nv), promotes=['*'])
-p.model.add_subsystem('distance', Distances(num_nodes=nn, num_v=nv), promotes=['*'])
-p.setup()
-
-p['t_start'] = np.random.uniform(0, 40, nv)
-p['t_end'] = np.random.uniform(50, 100, nv)
-p['t'] = np.linspace(0, 100, nn)
-
-
-theta = np.linspace(0, 2*np.pi, nv + 1)[:nv]
-
-r = 100.0
-x_start = r * np.cos(theta)
-y_start = r * np.sin(theta)  
-
-k = 3
-theta2 = theta - np.pi + np.random.uniform(-np.pi/k, np.pi/k, nv)
-x_end = r * np.cos(theta2)
-y_end = r * np.sin(theta2)
-
-X = np.zeros((nn, nv))
-Y = np.zeros((nn, nv))
-
-print(x_start)
-for i in range(nv):
-    X[:, i] = np.linspace(x_start[i], x_end[i], nn)
-    Y[:, i] = np.linspace(y_start[i], y_end[i], nn)
-
-p['X'] = X
-p['Y'] = Y
+    p['t_start'] = np.random.uniform(0, 40, nv)
+    p['t_end'] = np.random.uniform(50, 100, nv)
+    p['t'] = np.linspace(0, 100, nn)
 
 
-p.run_model()
+    theta = np.linspace(0, 2*np.pi, nv + 1)[:nv]
 
-c = p['c_schedule']
-#plt.figure()
-#plt.plot(p['t'], p['c_schedule'])
+    r = 100.0
+    x_start = r * np.cos(theta)
+    y_start = r * np.sin(theta)  
 
+    k = 3
+    theta2 = theta - np.pi + np.random.uniform(-np.pi/k, np.pi/k, nv)
+    x_end = r * np.cos(theta2)
+    y_end = r * np.sin(theta2)
 
-print(p['dist'])
+    X = np.zeros((nn, nv))
+    Y = np.zeros((nn, nv))
 
+    print(x_start)
+    for i in range(nv):
+        X[:, i] = np.linspace(x_start[i], x_end[i], nn)
+        Y[:, i] = np.linspace(y_start[i], y_end[i], nn)
 
-#plt.show()
-
-
-nn = 10
-nv = 5
-
-p = om.Problem()
-p.model = om.Group()
-p.model.add_subsystem('distance', Distances(num_nodes=nn, num_v=nv), promotes=['*'])
-p.setup(force_alloc_complex=True)
-
-np.random.seed(0)
-
-p['X'] = np.random.uniform(-10, 10, (nn, nv))
-p['Y'] = np.random.uniform(-10, 10, (nn, nv))
-p['c_schedule'] = np.ones((nn, nv))
-p['t'] = np.linspace(0, 100, nn)
-
-p.run_model()
-check_partials_data = p.check_partials(compact_print=True, method='cs')
-# plot in non-binary mode
-om.partial_deriv_plot('dist', 'X', check_partials_data, binary = False)
+    p['X'] = X
+    p['Y'] = Y
 
 
-# publish a paper on an application of an MDO technique applied to airspace operations in a gradient based optimization context
+    p.run_model()
+
+    c = p['c_schedule']
+    #plt.figure()
+    #plt.plot(p['t'], p['c_schedule'])
+
+
+    print(p['dist'])
+
+
+    #plt.show()
+
+
+    nn = 10
+    nv = 5
+
+    p = om.Problem()
+    p.model = om.Group()
+    p.model.add_subsystem('distance', Distances(num_nodes=nn, num_v=nv), promotes=['*'])
+    p.setup(force_alloc_complex=True)
+
+    np.random.seed(0)
+
+    p['X'] = np.random.uniform(-10, 10, (nn, nv))
+    p['Y'] = np.random.uniform(-10, 10, (nn, nv))
+    p['c_schedule'] = np.ones((nn, nv))
+    p['t'] = np.linspace(0, 100, nn)
+
+    p.run_model()
+    check_partials_data = p.check_partials(compact_print=True, method='cs')
+    # plot in non-binary mode
+    om.partial_deriv_plot('dist', 'X', check_partials_data, binary = False)
+
+
+    # publish a paper on an application of an MDO technique applied to airspace operations in a gradient based optimization context
 
 
 
