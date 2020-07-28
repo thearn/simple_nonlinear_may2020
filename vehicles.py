@@ -98,6 +98,8 @@ class Vehicles(om.ExplicitComponent):
 
         outputs['sq_thrust'] = sq_thrust
 
+        #print(sq_thrust.max())
+
 
 
     def compute_partials(self, inputs, jacobian):

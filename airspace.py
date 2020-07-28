@@ -22,7 +22,7 @@ class Airspace(om.Group):
 
         self.add_subsystem('schedule', Schedule(num_nodes=nn, num_v=nv), promotes=['*'])
         self.add_subsystem('vehicles', Vehicles(num_nodes=nn, num_v=nv), promotes=['*'])
-        self.add_subsystem('distances', Distances(num_nodes=nn, num_v=nv), promotes=['*'])
+        #self.add_subsystem('distances', Distances(num_nodes=nn, num_v=nv), promotes=['*'])
 
 nv = 4
 ns = 25
@@ -75,27 +75,19 @@ phase.add_state('Y',
                 upper=1000.0, 
                 defect_scaler=ds)
 
-# phase.add_state('Vx', 
-#                 fix_initial=True,
-#                 fix_final=False, 
-#                 shape=(nv,),
-#                 rate_source='Vx_dot', 
-#                 targets='Vx', 
-#                 lower=-10.0,
-#                 upper=10.0, 
-#                 units='m/s',
-#                 defect_scaler=ds)
+phase.add_state('Vx', 
+                shape=(nv,),
+                rate_source='Vx_dot', 
+                targets='Vx', 
+                units='m/s',
+                defect_scaler=1e-1)
 
-# phase.add_state('Vy', 
-#                 fix_initial=True,
-#                 fix_final=False, 
-#                 shape=(nv,),
-#                 rate_source='Vy_dot', 
-#                 targets='Vy', 
-#                 lower=-10.0,
-#                 upper=10.0, 
-#                 units='m/s',
-#                 defect_scaler=ds)
+phase.add_state('Vy', 
+                shape=(nv,),
+                rate_source='Vy_dot', 
+                targets='Vy', 
+                units='m/s',
+                defect_scaler=1e-1)
 
 phase.add_state('theta', 
                 fix_initial=False, 
@@ -107,11 +99,8 @@ phase.add_state('theta',
                 defect_scaler=ds)
 
 phase.add_state('E', 
-                fix_initial=True, 
                 rate_source='sq_thrust', 
-                lower=0.0,
-                units='min*N**2',
-                defect_scaler=ds)
+                units='min*N**2')
 
 
 t_start = np.random.uniform(0, 50, nv)
@@ -146,7 +135,7 @@ p.driver.opt_settings['max_iter'] = 1500
 
 # --------------------------
 
-#p.driver.options['optimizer'] = 'SNOPT'
+# p.driver.options['optimizer'] = 'SNOPT'
 # #p.driver.opt_settings["Major step limit"] = 2.0 #2.0
 # p.driver.opt_settings['Major iterations limit'] = 1000000
 # p.driver.opt_settings['Minor iterations limit'] = 1000000
@@ -154,19 +143,17 @@ p.driver.opt_settings['max_iter'] = 1500
 # p.driver.opt_settings['iSumm'] = 6
 # p.driver.opt_settings['Verify level'] = 0  # if you set this to 3 it checks partials, if you set it ot zero, ot doesn't check partials
 
-# #p.driver.opt_settings['Major feasibility tolerance'] = 1.0E-5
-# p.driver.opt_settings['Major optimality tolerance'] = 1.0E-5
+#p.driver.opt_settings['Major feasibility tolerance'] = 1.0E-5
+#p.driver.opt_settings['Major optimality tolerance'] = 1.0E-5
 
 # --------------------------
 
-phase.add_objective('E', loc='final', scaler=1)
+phase.add_objective('time', loc='final', ref=200.0)
 
-#phase.add_control('thrust', targets=['thrust'], shape=(nv,), lower=-20, upper=20, opt=True)
-phase.add_control('Vx', targets=['Vx'], shape=(nv,), lower=-5, upper=5, opt=True)
-phase.add_control('Vy', targets=['Vy'], shape=(nv,), lower=-5, upper=5, opt=True)
-phase.add_control('theta_dot', targets=['theta_dot'], shape=(nv,), lower=-0.2, upper=0.2, opt=True)
+phase.add_control('thrust', targets=['thrust'], shape=(nv,), lower=-0.0005, upper=0.0005, opt=True)
+phase.add_control('theta_dot', targets=['theta_dot'], shape=(nv,), lower=-0.5, upper=0.5, units='rad/min', opt=True)
 
-p.model.add_constraint('phase0.rhs_disc.distances.dist', upper=0.0)
+#p.model.add_constraint('phase0.rhs_disc.distances.dist', upper=0.0)
 
 p.driver.declare_coloring() 
 
@@ -212,11 +199,20 @@ t = sim_out.get_val('traj.phase0.timeseries.time')
 X = sim_out.get_val('traj.phase0.timeseries.states:X')
 Y = sim_out.get_val('traj.phase0.timeseries.states:Y')
 
+theta_dot = sim_out.get_val('traj.phase0.timeseries.controls:theta_dot')
+thrust = sim_out.get_val('traj.phase0.timeseries.controls:thrust')
+
+plt.figure()
+plt.subplot(211)
+plt.plot(t, thrust)
+plt.subplot(212)
+plt.plot(t, theta_dot)
+
 # Vx = sim_out.get_val('traj.phase0.timeseries.states:Vx')
 # Vy = sim_out.get_val('traj.phase0.timeseries.states:Vy')
 # V = np.sqrt(Vx**2 + Vy**2)
-plt.figure()
-plt.plot(t, X)
+# plt.figure()
+# plt.plot(t, X)
 
 plt.figure()
 
