@@ -90,7 +90,7 @@ class Vehicles(om.ExplicitComponent):
         outputs['X_dot'] = cos(theta) * Vx * c_schedule
         outputs['Y_dot'] = sin(theta) * Vy * c_schedule
 
-        self.a = 0.3
+        self.a = 0.6
         outputs['Vx_dot'] = cos(theta) * (self.c_thrust - self.a*Vx)
         outputs['Vy_dot'] = sin(theta) * (self.c_thrust - self.a*Vy)
 

@@ -22,11 +22,11 @@ class Airspace(om.Group):
 
         self.add_subsystem('schedule', Schedule(num_nodes=nn, num_v=nv), promotes=['*'])
         self.add_subsystem('vehicles', Vehicles(num_nodes=nn, num_v=nv), promotes=['*'])
-        #self.add_subsystem('distances', Distances(num_nodes=nn, num_v=nv), promotes=['*'])
+        self.add_subsystem('distances', Distances(num_nodes=nn, num_v=nv), promotes=['*'])
 
-nv = 4
+nv = 8
 ns = 25
-t_duration = 200.0
+t_duration = 20.0
 
 
 p = om.Problem(model=om.Group())
@@ -60,8 +60,8 @@ phase.add_state('X',
                 rate_source='X_dot', 
                 targets='X',
                 units='m', 
-                lower=-1000.0,
-                upper=1000.0, 
+                lower=-120.0,
+                upper=120.0, 
                 defect_scaler=ds)
 
 phase.add_state('Y', 
@@ -71,8 +71,8 @@ phase.add_state('Y',
                 rate_source='Y_dot', 
                 targets='Y',
                 units='m', 
-                lower=-1000.0,
-                upper=1000.0, 
+                lower=-120.0,
+                upper=120.0, 
                 defect_scaler=ds)
 
 phase.add_state('Vx', 
@@ -100,11 +100,12 @@ phase.add_state('theta',
 
 phase.add_state('E', 
                 rate_source='sq_thrust', 
-                units='min*N**2')
+                units='s*N**2',
+                fix_initial=True)
 
 
-t_start = np.random.uniform(0, 50, nv)
-t_end = np.random.uniform(150, 199, nv)
+t_start = np.random.uniform(0.0, 5.0, nv)
+t_end = np.random.uniform(15.0, 19.9, nv)
 
 phase.add_input_parameter('t_start', 
                               targets='t_start', 
@@ -148,10 +149,11 @@ p.driver.opt_settings['max_iter'] = 1500
 
 # --------------------------
 
-phase.add_objective('time', loc='final', ref=200.0)
+#phase.add_objective('time', loc='final', ref=20.0)
+phase.add_objective('E', loc='final', scaler=1e10)
 
-phase.add_control('thrust', targets=['thrust'], shape=(nv,), lower=-0.0005, upper=0.0005, opt=True)
-phase.add_control('theta_dot', targets=['theta_dot'], shape=(nv,), lower=-0.5, upper=0.5, units='rad/min', opt=True)
+phase.add_control('thrust', targets=['thrust'], shape=(nv,), lower=-0.000005, upper=0.000005, scaler=1e8, opt=True)
+phase.add_control('theta_dot', targets=['theta_dot'], shape=(nv,), lower=-1.0, upper=1.0, units='rad/min', opt=True)
 
 #p.model.add_constraint('phase0.rhs_disc.distances.dist', upper=0.0)
 
@@ -160,7 +162,7 @@ p.driver.declare_coloring()
 p.setup(check=True)
 
 p.set_val('traj.phase0.t_initial', 0.0)
-p.set_val('traj.phase0.t_duration', 205.0)
+p.set_val('traj.phase0.t_duration', 21.0)
 
 
 theta = np.linspace(0, 2*np.pi, nv + 1)[:nv]
@@ -180,9 +182,10 @@ y_end = r * np.sin(theta2)
 # quit()
 
 th_start = np.random.uniform(0.0, 2*np.pi, nv)
-th_endß = np.random.uniform(0.0, 2*np.pi, nv)
+th_end = np.random.uniform(0.0, 2*np.pi, nv)
 p.set_val('traj.phase0.states:X', phase.interpolate(ys=[x_start, x_end], nodes='state_input'))
 p.set_val('traj.phase0.states:Y', phase.interpolate(ys=[y_start, y_end], nodes='state_input'))
+p.set_val('traj.phase0.states:E', phase.interpolate(ys=[0.0, 1.0], nodes='state_input'))
 
 
 #z = np.zeros(nv)
@@ -199,8 +202,12 @@ t = sim_out.get_val('traj.phase0.timeseries.time')
 X = sim_out.get_val('traj.phase0.timeseries.states:X')
 Y = sim_out.get_val('traj.phase0.timeseries.states:Y')
 
+E = sim_out.get_val('traj.phase0.timeseries.states:E')
+
 theta_dot = sim_out.get_val('traj.phase0.timeseries.controls:theta_dot')
 thrust = sim_out.get_val('traj.phase0.timeseries.controls:thrust')
+
+#print(E)
 
 plt.figure()
 plt.subplot(211)
