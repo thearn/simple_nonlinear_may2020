@@ -28,7 +28,7 @@ class Distances(om.ExplicitComponent):
 
         # schedule based scaling
         self.add_input('c_schedule',
-               val=np.zeros((nn, nr)))
+               val=np.ones((nn, nr)))
 
         # aggregated distance constraint vector?
         self.add_output('dist', val=0.0)
