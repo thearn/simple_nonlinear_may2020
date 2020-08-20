@@ -16,7 +16,7 @@ import pickle
 np.random.seed(0)
 
 
-limit = 50.0
+limit = 25.0
 
 class Airspace(om.Group):
     def initialize(self):
@@ -36,7 +36,7 @@ class Airspace(om.Group):
                                                      method=1), 
                                         promotes=['*'])
 
-nv = 25
+nv = 100
 ns = 20
 
 p = om.Problem(model=om.Group())
@@ -60,7 +60,7 @@ phase.set_time_options(fix_initial=True, fix_duration=False, units='s')
 
 traj.add_phase(name='phase0', phase=phase)
 
-ds=1e-3
+ds=1e-1
 phase.add_state('X', 
                 fix_initial=True,
                 fix_final=True, 
@@ -90,29 +90,29 @@ phase.add_state('Y',
 
 p.driver = om.pyOptSparseDriver()
 # -------------------------
-# p.driver.options['optimizer'] = 'IPOPT'
-# p.driver.options['print_results'] = False
-# p.driver.opt_settings['hessian_approximation'] = 'limited-memory'
-# # p.driver.opt_settings['mu_init'] = 1.0E-2
-# p.driver.opt_settings['nlp_scaling_method'] = 'gradient-based'
-# p.driver.opt_settings['print_level'] = 5
-# p.driver.opt_settings['linear_solver'] = 'mumps'
-# p.driver.opt_settings['max_iter'] = 1500
+p.driver.options['optimizer'] = 'IPOPT'
+p.driver.options['print_results'] = False
+p.driver.opt_settings['hessian_approximation'] = 'limited-memory'
+# p.driver.opt_settings['mu_init'] = 1.0E-2
+#p.driver.opt_settings['nlp_scaling_method'] = 'gradient-based'
+p.driver.opt_settings['print_level'] = 5
+p.driver.opt_settings['linear_solver'] = 'mumps'
+p.driver.opt_settings['max_iter'] = 15000
 
 # --------------------------
 
-p.driver.options['optimizer'] = 'SNOPT'
-p.driver.options['print_results'] = False
-p.driver.opt_settings['Major iterations limit'] = 1000000
-p.driver.opt_settings['Minor iterations limit'] = 1000000
-p.driver.opt_settings['Iterations limit'] = 1000000
-p.driver.opt_settings['iSumm'] = 6
-p.driver.opt_settings['Verify level'] = 0  # if you set this to 3 it checks partials, if you set it ot zero, ot doesn't check partials
+# p.driver.options['optimizer'] = 'SNOPT'
+# p.driver.options['print_results'] = False
+# p.driver.opt_settings['Major iterations limit'] = 1000000
+# p.driver.opt_settings['Minor iterations limit'] = 1000000
+# p.driver.opt_settings['Iterations limit'] = 1000000
+# p.driver.opt_settings['iSumm'] = 6
+# p.driver.opt_settings['Verify level'] = 0  # if you set this to 3 it checks partials, if you set it ot zero, ot doesn't check partials
 
-p.driver.opt_settings['Major feasibility tolerance'] = 1.0E-8
-p.driver.opt_settings['Major optimality tolerance'] = 1.0E-6
+# p.driver.opt_settings['Major feasibility tolerance'] = 1.0E-8
+# p.driver.opt_settings['Major optimality tolerance'] = 1.0E-6
 
-p.driver.opt_settings['LU singularity tolerance'] = 1.0E-6
+# p.driver.opt_settings['LU singularity tolerance'] = 1.0E-6
 
 # --------------------------
 
@@ -127,9 +127,12 @@ phase.add_control('Vy', targets=['Vy'], shape=(nv,), lower=-25, upper=25, units=
 
 phase.add_timeseries_output('dist')
 
-p.model.add_constraint('traj.phase0.rhs_disc.dist', upper=0.0, scaler=10000.0)
+p.model.add_constraint('traj.phase0.rhs_disc.dist', equals=0.0, ref=0.0001)
+p.model.add_constraint('traj.phase0.rhs_disc.dist_good', upper=0.0, scaler=1.0)
 
-p.driver.declare_coloring() 
+
+#p.driver.declare_coloring() 
+p.driver.use_fixed_coloring()
 
 p.setup(check=True)
 
@@ -175,14 +178,14 @@ while len(x_port) < 2*nv:
         
         if d1 < port_limit:
             too_close = True
-            print(len(x_port), d1)
+            #print(len(x_port), d1)
             break
 
     if not too_close:
         x_port.append(x)
         y_port.append(y)
 
-    print("port", len(x_port), "of", 2*nv)
+        print("creating port", len(x_port), "of", 2*nv)
 
 
 x_start = x_port[:nv]

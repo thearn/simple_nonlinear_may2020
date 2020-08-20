@@ -100,7 +100,7 @@ if __name__ == '__main__':
     
     np.random.seed(0)
 
-    nn = 3
+    nn = 7
     nv = 10
 
     p = om.Problem()

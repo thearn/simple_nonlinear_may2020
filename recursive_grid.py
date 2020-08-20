@@ -99,7 +99,7 @@ def min_dist_grid(x, y, top=True, limit=0.05):
 if __name__ == '__main__':
     print()
     np.random.seed(0)
-    n = 4
+    n = 50
     limit=10.0
     x = np.random.uniform(0, 100, n)
     y = np.random.uniform(0, 100, n)
