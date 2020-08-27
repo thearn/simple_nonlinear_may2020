@@ -15,8 +15,8 @@ import pickle
 
 np.random.seed(0)
 
-
-limit = 25.0
+# separation requirement (meters)
+limit = 150.0
 
 class Airspace(om.Group):
     def initialize(self):
@@ -36,8 +36,8 @@ class Airspace(om.Group):
                                                      method=1), 
                                         promotes=['*'])
 
-nv = 100
-ns = 20
+nv = 12
+ns = 25
 
 p = om.Problem(model=om.Group())
 traj = dm.Trajectory()
@@ -90,29 +90,29 @@ phase.add_state('Y',
 
 p.driver = om.pyOptSparseDriver()
 # -------------------------
-p.driver.options['optimizer'] = 'IPOPT'
-p.driver.options['print_results'] = False
-p.driver.opt_settings['hessian_approximation'] = 'limited-memory'
-# p.driver.opt_settings['mu_init'] = 1.0E-2
-#p.driver.opt_settings['nlp_scaling_method'] = 'gradient-based'
-p.driver.opt_settings['print_level'] = 5
-p.driver.opt_settings['linear_solver'] = 'mumps'
-p.driver.opt_settings['max_iter'] = 15000
+# p.driver.options['optimizer'] = 'IPOPT'
+# p.driver.options['print_results'] = False
+# p.driver.opt_settings['hessian_approximation'] = 'limited-memory'
+# # p.driver.opt_settings['mu_init'] = 1.0E-2
+# #p.driver.opt_settings['nlp_scaling_method'] = 'gradient-based'
+# p.driver.opt_settings['print_level'] = 5
+# p.driver.opt_settings['linear_solver'] = 'mumps'
+# p.driver.opt_settings['max_iter'] = 15000
 
 # --------------------------
 
-# p.driver.options['optimizer'] = 'SNOPT'
-# p.driver.options['print_results'] = False
-# p.driver.opt_settings['Major iterations limit'] = 1000000
-# p.driver.opt_settings['Minor iterations limit'] = 1000000
-# p.driver.opt_settings['Iterations limit'] = 1000000
-# p.driver.opt_settings['iSumm'] = 6
-# p.driver.opt_settings['Verify level'] = 0  # if you set this to 3 it checks partials, if you set it ot zero, ot doesn't check partials
+p.driver.options['optimizer'] = 'SNOPT'
+p.driver.options['print_results'] = False
+p.driver.opt_settings['Major iterations limit'] = 1000000
+p.driver.opt_settings['Minor iterations limit'] = 1000000
+p.driver.opt_settings['Iterations limit'] = 1000000
+p.driver.opt_settings['iSumm'] = 6
+p.driver.opt_settings['Verify level'] = 0  # if you set this to 3 it checks partials, if you set it ot zero, ot doesn't check partials
 
-# p.driver.opt_settings['Major feasibility tolerance'] = 1.0E-8
-# p.driver.opt_settings['Major optimality tolerance'] = 1.0E-6
+#p.driver.opt_settings['Major feasibility tolerance'] = 1.0E-8
+p.driver.opt_settings['Major optimality tolerance'] = 1.0E-6
 
-# p.driver.opt_settings['LU singularity tolerance'] = 1.0E-6
+p.driver.opt_settings['LU singularity tolerance'] = 1.0E-6
 
 # --------------------------
 
@@ -131,8 +131,8 @@ p.model.add_constraint('traj.phase0.rhs_disc.dist', equals=0.0, ref=0.0001)
 p.model.add_constraint('traj.phase0.rhs_disc.dist_good', upper=0.0, scaler=1.0)
 
 
-#p.driver.declare_coloring() 
-p.driver.use_fixed_coloring()
+p.driver.declare_coloring() 
+# p.driver.use_fixed_coloring()
 
 p.setup(check=True)
 
@@ -158,18 +158,18 @@ p.set_val('traj.phase0.t_duration', 4e3)
 x_port = []
 y_port = []
 
-port_limit = limit*2
-while len(x_port) < 2*nv:
+port_limit = 1.25*limit
+while len(x_port) < 1.5*nv:
     x = np.random.uniform(-1000, 1000)
     y = np.random.uniform(-1000, 1000)
 
 
-    r = np.sqrt((x**2) + (y**2))
-    theta = np.arctan2(y, x)
+    #r = np.sqrt((x**2) + (y**2))
+    #theta = np.arctan2(y, x)
 
-    r = r + (1000.0 - r)/2
-    x = np.cos(theta)*r
-    y = np.sin(theta)*r
+    #r = r + (1000.0 - r)*0.75
+    #x = np.cos(theta)*r
+    #y = np.sin(theta)*r
 
 
     too_close = False
@@ -185,14 +185,14 @@ while len(x_port) < 2*nv:
         x_port.append(x)
         y_port.append(y)
 
-        print("creating port", len(x_port), "of", 2*nv)
+        print("creating port", len(x_port), "of", nv)
 
 
 x_start = x_port[:nv]
-x_end = x_port[nv:]
+x_end = np.roll(x_port, nv//2)[:nv]
 
 y_start = y_port[:nv]
-y_end = y_port[nv:]
+y_end = np.roll(y_port, nv//2)[:nv]
 
 th_start = np.random.uniform(0.0, 2*np.pi, nv)
 th_end = np.random.uniform(0.0, 2*np.pi, nv)
@@ -208,9 +208,9 @@ p.run_driver()
 
 print(time.time() - t, "seconds")
 
-dist = p.get_val('traj.phase0.timeseries.dist')
-for i in range(len(dist)):
-    print(i, dist[i])
+# dist = p.get_val('traj.phase0.timeseries.dist')
+# for i in range(len(dist)):
+#     print(i, dist[i])
 
 
 sim_out = p#traj.simulate()
