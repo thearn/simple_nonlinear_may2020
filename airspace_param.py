@@ -84,6 +84,14 @@ def generate_airspace(nv=5, ns=25, limit=100.0,
                     self.add_subsystem('ks', om.KSComp(width=nc, vec_size=nn))
                     self.connect('aggmux.distks', 'ks.g')
 
+                elif aggregate == 'none':
+                    self.add_subsystem('aggmux', AggregateMuxKS(num_nodes=nn, nc=nc))
+                    nc = 0
+                    for i in range(nv):
+                        for k in range(i + 1, nv):
+                            self.connect('dist_%i_%i.dist' % (i, k), 'aggmux.dist_%i' % nc)
+                            nc += 1                    
+
     p = om.Problem(model=om.Group())
     traj = dm.Trajectory()
 
@@ -168,7 +176,7 @@ def generate_airspace(nv=5, ns=25, limit=100.0,
     phase.add_control('Vy', targets=['Vy'], shape=(nv,), lower=-25, upper=25, units='m/s', ref=25.0, opt=True)
     
     if separation == 'grid':
-        phase.add_timeseries_output('dist')
+        phase.add_timeseries_output('dist', output_name='separation_constraint')
 
         p.model.add_constraint('traj.phase0.rhs_disc.dist', equals=0.0, ref=0.0001)
         p.model.add_constraint('traj.phase0.rhs_disc.dist_good', upper=0.0, ref=0.0001)
@@ -178,9 +186,16 @@ def generate_airspace(nv=5, ns=25, limit=100.0,
         if aggregate == 'mine':
             p.model.add_constraint('traj.phase0.rhs_disc.aggmux.dist' , equals=0.0, ref=0.0001)
             p.model.add_constraint('traj.phase0.rhs_disc.aggmux.dist_good' , upper=0.0, ref=0.0001)
-        
+            phase.add_timeseries_output('aggmux.dist', output_name='separation_constraint')
+
         elif aggregate == 'ks':
             p.model.add_constraint('traj.phase0.rhs_disc.ks.KS' , upper=0.0, ref=0.0001)
+            phase.add_timeseries_output('ks.KS', output_name='separation_constraint')
+
+        elif aggregate == 'none':
+
+            p.model.add_constraint('traj.phase0.rhs_disc.aggmux.distks' , upper=0.0, ref=0.0001)
+            phase.add_timeseries_output('aggmux.distks', output_name='separation_constraint', shape=(nv*(nv-1)//2,))
 
     p.driver.declare_coloring() 
     #p.driver.use_fixed_coloring(coloring='coloring_files/total_coloring.pkl')
@@ -272,14 +287,14 @@ def generate_airspace(nv=5, ns=25, limit=100.0,
     #     print(i, dist[i])
 
 
-    sim_out = p#traj.simulate()
+    sim_out = traj.simulate()
 
     t = sim_out.get_val('traj.phase0.timeseries.time')
 
-    #dist = sim_out.get_val('traj.phase0.timeseries.dist')
-    #for i in range(len(t)):
-    #    print(i, t[i], dist[i])
+    separation_constraint = sim_out.get_val('traj.phase0.timeseries.separation_constraint')
+    print("max separation viol. :", np.max(separation_constraint))
 
+    
     X = sim_out.get_val('traj.phase0.timeseries.states:X')
     Y = sim_out.get_val('traj.phase0.timeseries.states:Y')
 
@@ -328,12 +343,12 @@ def generate_airspace(nv=5, ns=25, limit=100.0,
 
 
 if __name__ == '__main__':
-    generate_airspace(nv=30, 
+    generate_airspace(nv=8, 
                       ns=25, 
                       limit=100.0, 
                       airspace_type = 0, 
                       separation='pairwise',
-                      aggregate='ks',
+                      aggregate='mine',
                       seed=1)# 86 464
 
 

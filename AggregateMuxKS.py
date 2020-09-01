@@ -42,12 +42,12 @@ class AggregateMuxKS(om.ExplicitComponent):
         for i in range(nc):
             name = 'dist_%i' % i
             outputs['distks'][:, i] = inputs[name]
-            
+
             dx = np.zeros((nn, nc))
             dx[:, i] = 1.0
             self.jac['distks', name] = dx
 
-
+        #print("ks:", nn, nc, nn*nc)
     def compute_partials(self, params, jacobian):
         nn = self.options['num_nodes']
         nc = self.options['nc']
