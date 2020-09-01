@@ -10,6 +10,7 @@ from GridDistComp import GridDistComp
 from AllDistComp import AllDistComp
 from DeMux import DeMux
 from AggregateMux import AggregateMux
+from AggregateMuxKS import AggregateMuxKS
 
 import matplotlib.pyplot as plt
 import time
@@ -18,7 +19,7 @@ import time
 import pickle
 
 def generate_airspace(nv=5, ns=25, limit=100.0, 
-                      separation='grid', airspace_type=0, aggregate=True, seed=0):
+                      separation='grid', airspace_type=0, aggregate='mine', seed=0):
     np.random.seed(seed)
     print(30*"=")
     print("Starting run with nv = %i, ns = %i, limit = %2.2f" % (nv, ns, limit))
@@ -62,13 +63,26 @@ def generate_airspace(nv=5, ns=25, limit=100.0,
 
                         nc += 1
 
-                self.add_subsystem('aggmux', AggregateMux(num_nodes=nn, nc=nc))
+                if aggregate == 'mine':
+                    self.add_subsystem('aggmux', AggregateMux(num_nodes=nn, nc=nc))
 
-                nc = 0
-                for i in range(nv):
-                    for k in range(i + 1, nv):
-                        self.connect('dist_%i_%i.dist' % (i, k), 'aggmux.dist_%i' % nc)
-                        nc += 1
+                    nc = 0
+                    for i in range(nv):
+                        for k in range(i + 1, nv):
+                            self.connect('dist_%i_%i.dist' % (i, k), 'aggmux.dist_%i' % nc)
+                            nc += 1
+
+
+                elif aggregate == 'ks':
+                    self.add_subsystem('aggmux', AggregateMuxKS(num_nodes=nn, nc=nc))
+                    nc = 0
+                    for i in range(nv):
+                        for k in range(i + 1, nv):
+                            self.connect('dist_%i_%i.dist' % (i, k), 'aggmux.dist_%i' % nc)
+                            nc += 1
+
+                    self.add_subsystem('ks', om.KSComp(width=nc, vec_size=nn))
+                    self.connect('aggmux.distks', 'ks.g')
 
     p = om.Problem(model=om.Group())
     traj = dm.Trajectory()
@@ -147,7 +161,7 @@ def generate_airspace(nv=5, ns=25, limit=100.0,
     # --------------------------
 
 
-    phase.add_objective('time', loc='final', ref=4e4)
+    phase.add_objective('time', loc='final')
     #phase.add_objective('E', loc='final')
 
     phase.add_control('Vx', targets=['Vx'], shape=(nv,), lower=-25, upper=25, units='m/s', ref=25.0, opt=True)
@@ -160,9 +174,13 @@ def generate_airspace(nv=5, ns=25, limit=100.0,
         p.model.add_constraint('traj.phase0.rhs_disc.dist_good', upper=0.0, ref=0.0001)
 
     elif separation == 'pairwise':
-        p.model.add_constraint('traj.phase0.rhs_disc.aggmux.dist' , equals=0.0, ref=0.0001)
-        p.model.add_constraint('traj.phase0.rhs_disc.aggmux.dist_good' , upper=0.0, ref=0.0001)
 
+        if aggregate == 'mine':
+            p.model.add_constraint('traj.phase0.rhs_disc.aggmux.dist' , equals=0.0, ref=0.0001)
+            p.model.add_constraint('traj.phase0.rhs_disc.aggmux.dist_good' , upper=0.0, ref=0.0001)
+        
+        elif aggregate == 'ks':
+            p.model.add_constraint('traj.phase0.rhs_disc.ks.KS' , upper=0.0, ref=0.0001)
 
     p.driver.declare_coloring() 
     #p.driver.use_fixed_coloring(coloring='coloring_files/total_coloring.pkl')
@@ -310,11 +328,12 @@ def generate_airspace(nv=5, ns=25, limit=100.0,
 
 
 if __name__ == '__main__':
-    generate_airspace(nv=25, 
+    generate_airspace(nv=30, 
                       ns=25, 
-                      limit=50.0, 
+                      limit=100.0, 
                       airspace_type = 0, 
                       separation='pairwise',
-                      seed=1)
+                      aggregate='ks',
+                      seed=1)# 86 464
 
 
