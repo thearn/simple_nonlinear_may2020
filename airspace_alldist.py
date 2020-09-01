@@ -5,7 +5,9 @@ import dymos as dm
 from schedule import Schedule
 from vehicles import Vehicles
 #from distance import Distances
-from GridDistComp import GridDistComp
+from AllDistComp import AllDistComp
+from DeMux import DeMux
+from AggregateMux import AggregateMux
 
 import matplotlib.pyplot as plt
 import time
@@ -30,11 +32,35 @@ class Airspace(om.Group):
         self.add_subsystem('vehicles', Vehicles(num_nodes=nn, 
                                                 num_v=nv), 
                                        promotes=['*'])
-        self.add_subsystem('distances', GridDistComp(num_nodes=nn, 
-                                                     num_v=nv, 
-                                                     limit=limit,
-                                                     method=1), 
-                                        promotes=['*'])
+
+        self.add_subsystem('demux', DeMux(num_nodes=nn, nv=nv), 
+                                       promotes=['*'])
+        nc = 0
+        for i in range(nv):
+            for k in range(i + 1, nv):
+
+                self.add_subsystem('dist_%i_%i' % (i, k), 
+                                   AllDistComp(num_nodes=nn, limit=limit))
+
+                self.connect('x_%i' % i, 'dist_%i_%i.x1' % (i, k))
+                self.connect('y_%i' % i, 'dist_%i_%i.y1' % (i, k))
+                self.connect('x_%i' % k, 'dist_%i_%i.x2' % (i, k))
+                self.connect('y_%i' % k, 'dist_%i_%i.y2' % (i, k))
+
+                nc += 1
+
+        self.add_subsystem('aggmux', AggregateMux(num_nodes=nn, nc=nc))
+
+        nc = 0
+        for i in range(nv):
+            for k in range(i + 1, nv):
+                self.connect('dist_%i_%i.dist' % (i, k), 'aggmux.dist_%i' % nc)
+                nc += 1
+        # self.add_subsystem('distances', GridDistComp(num_nodes=nn, 
+        #                                              num_v=nv, 
+        #                                              limit=limit,
+        #                                              method=1), 
+        #                                 promotes=['*'])
 
 nv = 40
 ns = 25
@@ -85,7 +111,6 @@ phase.add_state('Y',
 
 # phase.add_state('E', 
 #                 rate_source='sq_thrust', 
-#                 defect_scaler=ds,
 #                 fix_initial=False)
 
 
@@ -111,6 +136,7 @@ p.driver.opt_settings['iSumm'] = 6
 p.driver.opt_settings['Verify level'] = 0  # if you set this to 3 it checks partials, if you set it ot zero, ot doesn't check partials
 
 p.driver.opt_settings['Major feasibility tolerance'] = 1.0E-8
+p.driver.opt_settings['Major optimality tolerance'] = 1.0E-6
 p.driver.opt_settings['LU singularity tolerance'] = 1.0E-6
 
 # --------------------------
@@ -124,14 +150,27 @@ phase.add_control('Vy', targets=['Vy'], shape=(nv,), lower=-25, upper=25, units=
 
 #phase.add_polynomial_control('V', targets='V', shape=(nv,), lower=-5, upper=5, units='m/s', opt=True, order=10)
 
-phase.add_timeseries_output('dist')
+#phase.add_timeseries_output('dist')
 
-p.model.add_constraint('traj.phase0.rhs_disc.dist', equals=0.0, ref=0.0001)
-p.model.add_constraint('traj.phase0.rhs_disc.dist_good', upper=0.0, ref=0.0001)
+#p.model.add_constraint('traj.phase0.rhs_disc.dist', equals=0.0, ref=0.0001)
+#p.model.add_constraint('traj.phase0.rhs_disc.dist_good', upper=0.0, scaler=1.0)
 
+
+phase.add_timeseries_output('aggmux.dist') 
+phase.add_timeseries_output('aggmux.dist_good') 
+for i in range(nv):
+    for k in range(i + 1, nv):
+
+        phase.add_timeseries_output('dist_%i_%i.dist' % (i, k),
+                                    output_name = 'dist_%i_%i_dist' % (i, k)) 
+        #p.model.add_constraint('traj.phase0.rhs_disc.dist_%i_%i.dist' % (i, k) , upper=0.0, ref=0.01)
+
+
+p.model.add_constraint('traj.phase0.rhs_disc.aggmux.dist' , equals=0.0, ref=0.0001)
+p.model.add_constraint('traj.phase0.rhs_disc.aggmux.dist_good' , upper=0.0, ref=0.0001)
 
 p.driver.declare_coloring() 
-#p.driver.use_fixed_coloring(coloring='coloring_files/total_coloring.pkl')
+# p.driver.use_fixed_coloring()
 
 p.setup(check=True)
 
@@ -201,8 +240,6 @@ p.set_val('traj.phase0.states:Y', phase.interpolate(ys=[y_start, y_end], nodes='
 
 
 t = time.time()
-
-# save coloring file by nn, nv, 
 p.run_driver()
 
 #p.check_partials(compact_print=True)
@@ -218,9 +255,18 @@ sim_out = p#traj.simulate()
 
 t = sim_out.get_val('traj.phase0.timeseries.time')
 
-#dist = sim_out.get_val('traj.phase0.timeseries.dist')
-#for i in range(len(t)):
-#    print(i, t[i], dist[i])
+# for i in range(nv):
+#     for k in range(i + 1, nv):
+
+#         oname = 'dist_%i_%i_dist' % (i, k)
+
+#         dist_val = sim_out.get_val('traj.phase0.timeseries.%s' % oname)
+#         print(i, k, dist_val.max())
+
+dist = sim_out.get_val('traj.phase0.timeseries.dist')
+dist_good = sim_out.get_val('traj.phase0.timeseries.dist_good')
+print("dist", dist)
+print("dist_good", dist_good)
 
 X = sim_out.get_val('traj.phase0.timeseries.states:X')
 Y = sim_out.get_val('traj.phase0.timeseries.states:Y')

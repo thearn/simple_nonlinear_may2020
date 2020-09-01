@@ -38,11 +38,15 @@ for i in frames:
 
 
     for k in range(nv):
-        plt.scatter(X[i, k], Y[i, k], marker=(3, 0, theta[i, k]))
-        circle = plt.Circle((X[i, k], Y[i, k]), limit/3, fill=False)
+        #plt.scatter(X[i, k], Y[i, k], marker=(3, 0, theta[i, k]))
+        plt.scatter(X[i, k], Y[i, k])
+
+        circle = plt.Circle((X[i, k], Y[i, k]), limit/2, fill=False)
         plt.gca().add_artist(circle)
 
-        plt.plot([x_start[k], X[i, k]], [y_start[k], Y[i, k]], 'k--', linewidth=0.25)
+        plt.plot(X[:i,k], Y[:i, k], 'k--', linewidth=0.25)
+
+        #plt.plot([x_start[k], X[i, k]], [y_start[k], Y[i, k]], 'k--', linewidth=0.25)
         #plt.plot([X[i, k], x_end[k]], [Y[i, k], y_end[k]], 'k--', linewidth=0.25)
     
     plt.tight_layout(pad=1)

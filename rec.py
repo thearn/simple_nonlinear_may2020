@@ -1,6 +1,8 @@
 import numpy as np
 
 import math
+
+
 def dist(p1, p2):
     d = math.sqrt((p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2)
     if d < 1e-10:
@@ -122,7 +124,7 @@ if __name__ == '__main__':
 
     import time
 
-    n = 500
+    n = 5000
     np.random.seed(2)
     x = np.random.uniform(0, 100, n)
     y = np.random.uniform(0, 100, n)
@@ -132,8 +134,8 @@ if __name__ == '__main__':
     print("sol:", i, k, mn)
     print("time:", time.time() - t)
     print()
-    for i, k in cache:
-        print("test:", cache[i, k][0], np.sqrt((x[i] - x[k])**2 + (y[i] - y[k])**2))
+    #for i, k in cache:
+    #    print("test:", cache[i, k][0], np.sqrt((x[i] - x[k])**2 + (y[i] - y[k])**2))
     quit()
     print(len(cache))
     # for a,b in cache:
