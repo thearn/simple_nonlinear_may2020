@@ -38,7 +38,6 @@ class DeMux(om.ExplicitComponent):
             self.declare_partials('y_%i' % i, 'Y', rows=arange2, cols=arange1)
 
     def compute(self, inputs, outputs):
-
         nv = self.options['nv']
         X = inputs['X']
         Y = inputs['Y']

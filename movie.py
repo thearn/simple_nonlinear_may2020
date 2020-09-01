@@ -4,7 +4,7 @@ import pickle
 import shutil, os
 
 with open('flight.dat', 'rb') as f:
-    t, X, Y, Vx, Vy, x_start, x_end, y_start, y_end, limit = pickle.load(f)
+    t, X, Y, Vx, Vy, x_start, x_end, y_start, y_end, nv, ns, limit, separation, airspace_type, aggregate = pickle.load(f)
 
 
 theta = np.degrees(np.arctan2(Vy, Vx)) + 35
@@ -25,13 +25,14 @@ for i in frames:
     fig = plt.figure()
     ax = plt.gca()
 
-    #circle = plt.Circle((0, 0), 1000, fill=False)
-    #plt.gca().add_artist(circle)
-
-    plt.plot([-1000, 1000], [1000, 1000], 'k')
-    plt.plot([-1000, -1000], [1000, -1000], 'k')
-    plt.plot([-1000, 1000], [-1000, -1000], 'k')
-    plt.plot([1000, 1000], [-1000, 1000], 'k')
+    if airspace_type == 0:
+        plt.plot([-1000, 1000], [1000, 1000], 'k')
+        plt.plot([-1000, -1000], [1000, -1000], 'k')
+        plt.plot([-1000, 1000], [-1000, -1000], 'k')
+        plt.plot([1000, 1000], [-1000, 1000], 'k')
+    else:
+        circle = plt.Circle((0, 0), 1000, fill=False)
+        plt.gca().add_artist(circle)
 
     plt.scatter(x_start, y_start, c='k', marker='x')
     plt.scatter(x_end, y_end, c='k')

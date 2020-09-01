@@ -16,7 +16,7 @@ import pickle
 np.random.seed(1)
 
 # separation requirement (meters)
-limit = 75.0
+limit = 50.0
 
 class Airspace(om.Group):
     def initialize(self):
@@ -36,7 +36,7 @@ class Airspace(om.Group):
                                                      method=1), 
                                         promotes=['*'])
 
-nv = 40
+nv = 25
 ns = 25
 
 p = om.Problem(model=om.Group())
@@ -193,11 +193,18 @@ x_end = np.roll(x_port, nv//2)[:nv]
 y_start = y_port[:nv]
 y_end = np.roll(y_port, nv//2)[:nv]
 
+
 th_start = np.random.uniform(0.0, 2*np.pi, nv)
 th_end = np.random.uniform(0.0, 2*np.pi, nv)
+
+# for i in range(nv):
+#     print(x_start[i], y_start[i], "--->", x_end[i], y_end[i])
+# quit()
 p.set_val('traj.phase0.states:X', phase.interpolate(ys=[x_start, x_end], nodes='state_input'))
 p.set_val('traj.phase0.states:Y', phase.interpolate(ys=[y_start, y_end], nodes='state_input'))
 # p.set_val('traj.phase0.states:theta', phase.interpolate(ys=[th_start, th_end], nodes='state_input'))
+
+p.run_model()
 
 
 t = time.time()

@@ -18,7 +18,7 @@ import pickle
 np.random.seed(1)
 
 # separation requirement (meters)
-limit = 75.0
+limit = 25.0
 
 class Airspace(om.Group):
     def initialize(self):
@@ -62,7 +62,7 @@ class Airspace(om.Group):
         #                                              method=1), 
         #                                 promotes=['*'])
 
-nv = 40
+nv = 25
 ns = 25
 
 p = om.Problem(model=om.Group())
@@ -136,7 +136,7 @@ p.driver.opt_settings['iSumm'] = 6
 p.driver.opt_settings['Verify level'] = 0  # if you set this to 3 it checks partials, if you set it ot zero, ot doesn't check partials
 
 p.driver.opt_settings['Major feasibility tolerance'] = 1.0E-8
-p.driver.opt_settings['Major optimality tolerance'] = 1.0E-6
+#p.driver.opt_settings['Major optimality tolerance'] = 1.0E-6
 p.driver.opt_settings['LU singularity tolerance'] = 1.0E-6
 
 # --------------------------
