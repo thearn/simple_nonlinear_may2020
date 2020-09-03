@@ -246,8 +246,8 @@ def generate_airspace(nv=5, ns=25, limit=100.0,
         y_end = np.roll(y_port, nv//2)[:nv]
 
     else:
-        theta = np.linspace(0, 2*np.pi, int(1.5*nv))
-        np.random.shuffle(theta)
+        theta = np.linspace(0, 2*np.pi, int(1.5*nv))[:-2]
+        #np.random.shuffle(theta)
 
         theta_start = theta[:nv]
         theta_end = np.roll(theta, nv//2)[:nv]
@@ -265,7 +265,17 @@ def generate_airspace(nv=5, ns=25, limit=100.0,
         x_end = r * np.cos(theta_end)
         y_end = r * np.sin(theta_end)
 
+        for k in range(nv):
+            for j in range(k + 1, nv):
 
+                d1 = np.sqrt((x_start[k] - x_start[j])**2 + (y_start[k] - y_start[j])**2)
+                d2 = np.sqrt((x_end[k] - x_end[j])**2 + (y_end[k] - y_end[j])**2)
+
+                if d1 < limit or d2 < limit:
+                    raise(TypeError, "ports too close!")
+
+        x_start[10], x_start[3] = x_start[3], x_start[10]
+        y_start[10], y_start[3] = y_start[3], y_start[10]
     # for i in range(nv):
     #     print(x_start[i], y_start[i], "--->", x_end[i], y_end[i])
     # quit()
@@ -343,11 +353,11 @@ def generate_airspace(nv=5, ns=25, limit=100.0,
 
 
 if __name__ == '__main__':
-    generate_airspace(nv=8, 
+    generate_airspace(nv=25, 
                       ns=25, 
-                      limit=100.0, 
+                      limit=20.0, 
                       airspace_type = 0, 
-                      separation='pairwise',
+                      separation='grid',
                       aggregate='mine',
                       seed=1)# 86 464
 
