@@ -352,12 +352,12 @@ def generate_airspace(nv=5, ns=25, limit=100.0,
 
 
 if __name__ == '__main__':
-    generate_airspace(nv=8, 
-                      ns=25, 
-                      limit=100.0, 
-                      airspace_type = 0, 
-                      separation='grid',
-                      aggregate='mine',
-                      seed=1)# 86 464
+    generate_airspace(nv=8, # number of vehicles
+                      ns=25, # number of sample points for dymos
+                      limit=100.0, # separation limit (in km)
+                      airspace_type = 0, # 0 = square region, low interaction. 1 = circular region, high interaction
+                      separation='grid', # separation method. 'grid', 'pairwise', or 'none'
+                      aggregate='mine', # separation constraint aggregation. 'mine', 'ks', or 'none'
+                      seed=1)# random seed for numpy
 
 

@@ -12,7 +12,5 @@ openmdao_checks*
 util/deriv_*
 util/simple_*
 util/sp.py
-results/*
-*.png
 *.dat
 *.txt
