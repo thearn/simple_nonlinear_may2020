@@ -3,7 +3,6 @@ from numpy import sin, cos, sqrt, exp
 import openmdao.api as om
 import dymos as dm
 import matplotlib.pyplot as plt
-from recursive_grid import min_dist_grid, min_dist_brute
 from rec import solution
 
 class GridDistComp(om.ExplicitComponent):
@@ -12,16 +11,11 @@ class GridDistComp(om.ExplicitComponent):
         self.options.declare('num_nodes', types=int)
         self.options.declare('num_v', types=int, default=4)
         self.options.declare('limit', types=float, default=1.0)
-        self.options.declare('method', types=int, default=1)
         self.options.declare('min_only', types=bool, default=False)
 
     def setup(self):
         nn = self.options['num_nodes']
         nv = self.options['num_v']
-
-        self.min_dist_method = min_dist_grid
-        if self.options['method'] == 0:
-            self.min_dist_method = min_dist_brute
 
         # States
         self.add_input('X',
@@ -68,8 +62,6 @@ class GridDistComp(om.ExplicitComponent):
             x_sub = X[i]
             y_sub = Y[i]
 
-            #min_d, pts, pts_bad = self.min_dist_method(x_sub, y_sub, limit=limit)
-
             min_d, p1, p2, pts_bad = solution(x_sub, y_sub)
             
             iter_set = pts_bad
@@ -79,14 +71,10 @@ class GridDistComp(om.ExplicitComponent):
                     p1, p2 = p2, p1
                 iter_set = [[p1, p2]]
 
-            #for a, b in pts_bad:
             for a,b in iter_set:
                 d = pts_bad[a, b][0]
                 gap = (limit - d)/limit
 
-                #test = np.sqrt((x_sub[a] - x_sub[b])**2 + (y_sub[a] - y_sub[b])**2)
-
-                #print(a, b, d, test)
                 if gap > 0.0:
                     outputs['dist'][i] += gap
                     self.dx[i, a] += -pts_bad[a, b][1]/limit

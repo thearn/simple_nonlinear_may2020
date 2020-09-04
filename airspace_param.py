@@ -42,8 +42,7 @@ def generate_airspace(nv=5, ns=25, limit=100.0,
             if separation == 'grid':
                 self.add_subsystem('distances', GridDistComp(num_nodes=nn, 
                                                              num_v=nv, 
-                                                             limit=limit,
-                                                             method=1), 
+                                                             limit=limit), 
                                                 promotes=['*'])
 
             elif separation == 'pairwise':
@@ -353,9 +352,9 @@ def generate_airspace(nv=5, ns=25, limit=100.0,
 
 
 if __name__ == '__main__':
-    generate_airspace(nv=25, 
+    generate_airspace(nv=8, 
                       ns=25, 
-                      limit=20.0, 
+                      limit=100.0, 
                       airspace_type = 0, 
                       separation='grid',
                       aggregate='mine',
