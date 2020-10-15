@@ -160,8 +160,9 @@ def generate_airspace(nv=5, ns=25, limit=100.0,
     p.driver.opt_settings['Minor iterations limit'] = 1000000
     p.driver.opt_settings['Iterations limit'] = 1000000
     p.driver.opt_settings['iSumm'] = 6
-    p.driver.opt_settings['Verify level'] = 0  # if you set this to 3 it checks partials, if you set it ot zero, ot doesn't check partials
+    p.driver.opt_settings['Verify level'] = -1  # if you set this to 3 it checks partials, if you set it ot zero, ot doesn't check partials
 
+    p.driver.opt_settings['Major optimality tolerance'] = 1.0E-5
     p.driver.opt_settings['Major feasibility tolerance'] = 1.0E-8
     p.driver.opt_settings['LU singularity tolerance'] = 1.0E-6
 
@@ -256,25 +257,39 @@ def generate_airspace(nv=5, ns=25, limit=100.0,
         r = 1000
         x_start = r * np.cos(theta_start)
         y_start = r * np.sin(theta_start)  
+        
+        too_close = True 
+        while too_close:
+            #theta_end = theta_start - np.pi + np.random.uniform(-np.pi/12, np.pi/12, nv)
+            theta_end = np.random.uniform(0, 2*np.pi, nv)
 
-        k = 12.0
-        #theta2 = theta - np.pi + np.random.uniform(-np.pi/k, np.pi/k, nv)
-        #theta2 = np.random.uniform(0, 2*np.pi, nv)
+            x_end = r * np.cos(theta_end)
+            y_end = r * np.sin(theta_end)
 
-        x_end = r * np.cos(theta_end)
-        y_end = r * np.sin(theta_end)
+            too_close = False
+            for k in range(nv):
 
-        for k in range(nv):
-            for j in range(k + 1, nv):
+                d0 = np.sqrt((x_start[k] - x_end[k])**2 + (y_start[k] - y_end[k])**2)
+                if d0 < 500:
+                    print("destination too close to origin...")
+                    too_close=True
+                    break
 
-                d1 = np.sqrt((x_start[k] - x_start[j])**2 + (y_start[k] - y_start[j])**2)
-                d2 = np.sqrt((x_end[k] - x_end[j])**2 + (y_end[k] - y_end[j])**2)
+                for j in range(k + 1, nv):
 
-                if d1 < limit or d2 < limit:
-                    raise(TypeError, "ports too close!")
+                    d1 = np.sqrt((x_start[k] - x_start[j])**2 + (y_start[k] - y_start[j])**2)
+                    d2 = np.sqrt((x_end[k] - x_end[j])**2 + (y_end[k] - y_end[j])**2)
 
-        x_start[10], x_start[3] = x_start[3], x_start[10]
-        y_start[10], y_start[3] = y_start[3], y_start[10]
+                    if d1 < limit or d2 < limit:
+                        print("ports too close! regenerating...")
+                        too_close = True
+                        break
+                if too_close:
+                    break
+
+
+        #x_start[10], x_start[3] = x_start[3], x_start[10]
+        #y_start[10], y_start[3] = y_start[3], y_start[10]
     # for i in range(nv):
     #     print(x_start[i], y_start[i], "--->", x_end[i], y_end[i])
     # quit()
@@ -329,7 +344,10 @@ def generate_airspace(nv=5, ns=25, limit=100.0,
     plt.figure()
     plt.subplot(211)
     plt.plot(t, Vx)
+    plt.ylabel('Vx')
     plt.subplot(212)
+    plt.xlabel('time')
+    plt.ylabel('Vy')
     plt.plot(t, Vy)
 
     plt.figure()
@@ -352,10 +370,10 @@ def generate_airspace(nv=5, ns=25, limit=100.0,
 
 
 if __name__ == '__main__':
-    generate_airspace(nv=8, # number of vehicles
+    generate_airspace(nv=5, # number of vehicles
                       ns=25, # number of sample points for dymos
-                      limit=100.0, # separation limit (in km)
-                      airspace_type = 0, # 0 = square region, low interaction. 1 = circular region, high interaction
+                      limit=80.0, # separation limit (in km)
+                      airspace_type = 1, # 0 = square region, low interaction. 1 = circular region, high interaction
                       separation='grid', # separation method. 'grid', 'pairwise', or 'none'
                       aggregate='mine', # separation constraint aggregation. 'mine', 'ks', or 'none'
                       seed=1)# random seed for numpy
