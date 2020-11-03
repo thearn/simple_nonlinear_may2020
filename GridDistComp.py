@@ -57,7 +57,7 @@ class GridDistComp(om.ExplicitComponent):
         outputs['dist'] = np.zeros(nn)
         outputs['dist_good'] = np.zeros(nn)
         #print("mine", nn)
-        gap = 0#int(0.1*nn) + 1
+        gap = int(0.1*nn) + 1
         for i in range(gap, nn - gap):
             x_sub = X[i]
             y_sub = Y[i]

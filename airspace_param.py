@@ -162,9 +162,9 @@ def generate_airspace(nv=5, ns=25, limit=100.0,
     p.driver.opt_settings['iSumm'] = 6
     p.driver.opt_settings['Verify level'] = -1  # if you set this to 3 it checks partials, if you set it ot zero, ot doesn't check partials
 
-    p.driver.opt_settings['Major optimality tolerance'] = 1.0E-5
-    p.driver.opt_settings['Major feasibility tolerance'] = 1.0E-8
-    p.driver.opt_settings['LU singularity tolerance'] = 1.0E-6
+    #p.driver.opt_settings['Major optimality tolerance'] = 1.0E-5
+    p.driver.opt_settings['Major feasibility tolerance'] = 1.0E-7
+    #p.driver.opt_settings['LU singularity tolerance'] = 1.0E-6
 
     # --------------------------
 
@@ -178,23 +178,23 @@ def generate_airspace(nv=5, ns=25, limit=100.0,
     if separation == 'grid':
         phase.add_timeseries_output('dist', output_name='separation_constraint')
 
-        p.model.add_constraint('traj.phase0.rhs_disc.dist', equals=0.0, ref=0.0001)
-        p.model.add_constraint('traj.phase0.rhs_disc.dist_good', upper=0.0, ref=0.0001)
+        p.model.add_constraint('traj.phase0.rhs_disc.dist', equals=0.0, ref=0.01)
+        p.model.add_constraint('traj.phase0.rhs_disc.dist_good', upper=0.0, ref=0.01)
 
     elif separation == 'pairwise':
 
         if aggregate == 'mine':
-            p.model.add_constraint('traj.phase0.rhs_disc.aggmux.dist' , equals=0.0, ref=0.0001)
-            p.model.add_constraint('traj.phase0.rhs_disc.aggmux.dist_good' , upper=0.0, ref=0.0001)
+            p.model.add_constraint('traj.phase0.rhs_disc.aggmux.dist' , equals=0.0, ref=0.01)
+            #p.model.add_constraint('traj.phase0.rhs_disc.aggmux.dist_good' , upper=0.0, ref=0.01)
             phase.add_timeseries_output('aggmux.dist', output_name='separation_constraint')
 
         elif aggregate == 'ks':
-            p.model.add_constraint('traj.phase0.rhs_disc.ks.KS' , upper=0.0, ref=0.0001)
+            p.model.add_constraint('traj.phase0.rhs_disc.ks.KS' , upper=0.0, ref=0.01)
             phase.add_timeseries_output('ks.KS', output_name='separation_constraint')
 
         elif aggregate == 'none':
 
-            p.model.add_constraint('traj.phase0.rhs_disc.aggmux.distks' , upper=0.0, ref=0.0001)
+            p.model.add_constraint('traj.phase0.rhs_disc.aggmux.distks' , upper=0.0, ref=0.01)
             phase.add_timeseries_output('aggmux.distks', output_name='separation_constraint', shape=(nv*(nv-1)//2,))
 
     p.driver.declare_coloring() 
@@ -259,9 +259,16 @@ def generate_airspace(nv=5, ns=25, limit=100.0,
         y_start = r * np.sin(theta_start)  
         
         too_close = True 
+
+        bad_idx = -1
+
         while too_close:
             #theta_end = theta_start - np.pi + np.random.uniform(-np.pi/12, np.pi/12, nv)
-            theta_end = np.random.uniform(0, 2*np.pi, nv)
+            if bad_idx == -1:
+                theta_end = np.random.uniform(0, 2*np.pi, nv)
+
+            else:
+                theta_end[bad_idx] = np.random.uniform(0, 2*np.pi)
 
             x_end = r * np.cos(theta_end)
             y_end = r * np.sin(theta_end)
@@ -270,8 +277,9 @@ def generate_airspace(nv=5, ns=25, limit=100.0,
             for k in range(nv):
 
                 d0 = np.sqrt((x_start[k] - x_end[k])**2 + (y_start[k] - y_end[k])**2)
-                if d0 < 500:
+                if d0 < limit:
                     print("destination too close to origin...")
+                    bad_idx = k
                     too_close=True
                     break
 
@@ -281,6 +289,7 @@ def generate_airspace(nv=5, ns=25, limit=100.0,
                     d2 = np.sqrt((x_end[k] - x_end[j])**2 + (y_end[k] - y_end[j])**2)
 
                     if d1 < limit or d2 < limit:
+                        bad_idx = k
                         print("ports too close! regenerating...")
                         too_close = True
                         break
@@ -296,16 +305,19 @@ def generate_airspace(nv=5, ns=25, limit=100.0,
     p.set_val('traj.phase0.states:X', phase.interpolate(ys=[x_start, x_end], nodes='state_input'))
     p.set_val('traj.phase0.states:Y', phase.interpolate(ys=[y_start, y_end], nodes='state_input'))
 
-    t = time.time()
+    
     p.run_model()
 
     # save coloring file by nn, nv, 
+    t = time.time()
+    print("starting")
     p.run_driver()
 
     #p.check_partials(compact_print=True)
-
+    print(50*"=")
+    print(nv, aggregate, separation, airspace_type)
     print(time.time() - t, "seconds")
-
+    quit()
     # dist = p.get_val('traj.phase0.timeseries.dist')
     # for i in range(len(dist)):
     #     print(i, dist[i])
@@ -341,41 +353,42 @@ def generate_airspace(nv=5, ns=25, limit=100.0,
 
 
 
-    plt.figure()
-    plt.subplot(211)
-    plt.plot(t, Vx)
-    plt.ylabel('Vx')
-    plt.subplot(212)
-    plt.xlabel('time')
-    plt.ylabel('Vy')
-    plt.plot(t, Vy)
+    # plt.figure()
+    # plt.subplot(211)
+    # plt.plot(t, Vx)
+    # plt.ylabel('Vx')
+    # plt.subplot(212)
+    # plt.xlabel('time')
+    # plt.ylabel('Vy')
+    # plt.plot(t, Vy)
 
-    plt.figure()
+    # plt.figure()
 
-    if airspace_type == 0:
-        plt.plot([-1000, 1000], [1000, 1000], 'k')
-        plt.plot([-1000, -1000], [1000, -1000], 'k')
-        plt.plot([-1000, 1000], [-1000, -1000], 'k')
-        plt.plot([1000, 1000], [-1000, 1000], 'k')
-    else:
-        circle = plt.Circle((0, 0), 1000, fill=False)
-        plt.gca().add_artist(circle)
-    for i in range(nv):
-        plt.scatter(x_start, y_start)
-        plt.scatter(x_end, y_end)
-        x = X[:, i]
-        y = Y[:, i]
-        plt.plot(x, y)
-    plt.show()
+    # if airspace_type == 0:
+    #     plt.plot([-1000, 1000], [1000, 1000], 'k')
+    #     plt.plot([-1000, -1000], [1000, -1000], 'k')
+    #     plt.plot([-1000, 1000], [-1000, -1000], 'k')
+    #     plt.plot([1000, 1000], [-1000, 1000], 'k')
+    # else:
+    #     circle = plt.Circle((0, 0), 1000, fill=False)
+    #     plt.gca().add_artist(circle)
+    # for i in range(nv):
+    #     plt.scatter(x_start, y_start)
+    #     plt.scatter(x_end, y_end)
+    #     x = X[:, i]
+    #     y = Y[:, i]
+    #     plt.plot(x, y)
+    # plt.show()
 
 
 if __name__ == '__main__':
-    generate_airspace(nv=5, # number of vehicles
-                      ns=25, # number of sample points for dymos
-                      limit=80.0, # separation limit (in km)
-                      airspace_type = 1, # 0 = square region, low interaction. 1 = circular region, high interaction
-                      separation='grid', # separation method. 'grid', 'pairwise', or 'none'
-                      aggregate='mine', # separation constraint aggregation. 'mine', 'ks', or 'none'
-                      seed=1)# random seed for numpy
+    # [2, 4, 8, 15, 30, 50, 100]
+    generate_airspace(nv=49, # number of vehicles
+                      ns=20, # number of sample points for dymos
+                      limit=45.0, # separation limit (in km)
+                      airspace_type = 0, # 0 = square region, low interaction. 1 = circular region, high interaction
+                      separation='pairwise', # separation method. 'grid', 'pairwise', or 'none'
+                      aggregate='ks', # separation constraint aggregation. 'mine', 'ks', or 'none'
+                      seed=5)# random seed for numpy
 
 

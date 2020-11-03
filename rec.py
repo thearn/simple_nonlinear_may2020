@@ -28,7 +28,7 @@ def min_dist_pair(ax, ay, idx_x, idx_y, cache={}):
     ln_ax = len(ax)  
     if ln_ax <= 3:
         return brute(ax, idx_x, cache)  
-
+    
     mid = ln_ax // 2  
     Qx = ax[:mid]  
     Rx = ax[mid:]
